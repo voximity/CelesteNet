@@ -17,6 +17,9 @@ namespace Celeste.Mod.CelesteNet.Client {
         public bool WantsToBeConnected { get; set; }
 
         [YamlIgnore]
+        public byte ServerBrowser { get; set; } = 0;
+
+        [YamlIgnore]
         public bool Connected {
             get => CelesteNetClientModule.Instance.IsAlive;
             set {
@@ -24,14 +27,13 @@ namespace Celeste.Mod.CelesteNet.Client {
 
                 if (value && !Connected)
                     CelesteNetClientModule.Instance.Start();
-                else if (!value && Connected)
+                else if (!value && Connected) {
                     CelesteNetClientModule.Instance.Stop();
+                    ServerObject = null;
+                }
 
                 if (!value && EnabledEntry != null && Engine.Scene != null)
                     Engine.Scene.OnEndOfFrame += () => EnabledEntry?.LeftPressed();
-                // TODO:
-                // if (ServerEntry != null)
-                //     ServerEntry.Disabled = value || !(Engine.Scene is Overworld);
                 if (NameEntry != null)
                     NameEntry.Disabled = value || !(Engine.Scene is Overworld);
             }
@@ -47,17 +49,21 @@ namespace Celeste.Mod.CelesteNet.Client {
 #endif
         [YamlIgnore]
         [SettingIgnore]
-        public string Server { get; set; } = "";
+        public ServerObject ServerObject { get; set; } = null;
 
+        [YamlIgnore]
+        [SettingIgnore]
+        public string Server { get => ServerObject is not null ? $"{ServerObject.Host}:{ServerObject.Port}" : ""; }
+
+#if !DEBUG
+        [SettingIgnore]
+#endif
         [SettingSubText("modoptions_celestenetclient_devonlyhint")]
         public string MasterServer { get; set; } = "http://localhost:1337";
 
         [YamlIgnore]
         [SettingIgnore]
         public TextMenu.Item MasterServerEntry { get; protected set; }
-
-        [YamlIgnore]
-        public byte ServerBrowser { get; set; } = 0;
 
         [YamlIgnore]
         [SettingIgnore]

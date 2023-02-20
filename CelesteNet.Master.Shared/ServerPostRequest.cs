@@ -5,4 +5,5 @@ public class ServerPostRequest {
     public string? Key { get; set; }
     public int Port { get; set; }
     public string Name { get; set; } = null!;
+    public int PlayerCount { get; set; }
 }

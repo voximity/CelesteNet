@@ -32,7 +32,8 @@ public class ServerController : ControllerBase {
         return Ok(ServerList.Servers.Select(entry => new {
             Name = entry.Value.Name,
             Host = entry.Value.Host.ToString(),
-            Port = entry.Value.Port
+            Port = entry.Value.Port,
+            PlayerCount = entry.Value.PlayerCount,
         }));
     }
 
@@ -46,6 +47,7 @@ public class ServerController : ControllerBase {
             if (data.Key != server.Key)
                 return StatusCode(403);
 
+            server.PlayerCount = data.PlayerCount;
             server.Activity = DateTime.UtcNow;
 
             _logger.LogInformation("Heartbeat from existing server {Name} ({Uuid})", server.Name, server.Uuid);

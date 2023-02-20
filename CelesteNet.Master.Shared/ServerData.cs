@@ -27,6 +27,9 @@ public class ServerData {
     /// The last heartbeat activity.
     public DateTime Activity { get; set; }
 
+    /// The player count.
+    public int PlayerCount { get; set; }
+
     public ServerData(IPAddress addr, ServerPostRequest data) {
         Uuid = Guid.NewGuid();
         Key = CreateSecretKey();
@@ -34,6 +37,7 @@ public class ServerData {
         Port = data.Port;
         Name = data.Name;
         Activity = DateTime.UtcNow;
+        PlayerCount = data.PlayerCount;
     }
 
     [JsonConstructor]
