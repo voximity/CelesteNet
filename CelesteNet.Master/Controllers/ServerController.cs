@@ -43,10 +43,10 @@ public class ServerController : ControllerBase {
         if (data.Uuid is Guid uuid && ServerList.Servers.ContainsKey(uuid)) {
             // the server is registered
             server = ServerList.Servers[uuid];
-            server.Activity = DateTime.UtcNow;
-
             if (data.Key != server.Key)
                 return StatusCode(403);
+
+            server.Activity = DateTime.UtcNow;
 
             _logger.LogInformation("Heartbeat from existing server {Name} ({Uuid})", server.Name, server.Uuid);
             return Ok(new ServerPostResponse(server));
