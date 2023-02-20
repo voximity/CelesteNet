@@ -44,12 +44,12 @@ namespace Celeste.Mod.CelesteNet.Server.Chat {
                     Logger.Log(LogLevel.VVV, "chatcmds", $"Command: {cmd.ID.ToLowerInvariant()} is {(cmd.InternalAliasing ? "internal alias" : "alias")} of {aliasTo.ID.ToLowerInvariant()}");
 
                 DataAll.List[i++] = new CommandInfo() {
-                                        ID = cmd.ID,
-                                        Auth = cmd.MustAuth,
-                                        AuthExec = cmd.MustAuthExec,
-                                        FirstArg = cmd.Completion,
-                                        AliasTo = cmd.InternalAliasing ? "" : aliasTo?.ID.ToLowerInvariant() ?? ""
-                                    };
+                    ID = cmd.ID,
+                    Auth = cmd.MustAuth,
+                    AuthExec = cmd.MustAuthExec,
+                    FirstArg = cmd.Completion,
+                    AliasTo = cmd.InternalAliasing ? "" : aliasTo?.ID.ToLowerInvariant() ?? ""
+                };
             }
 
             All = All.OrderBy(cmd => cmd.HelpOrder).ToList();

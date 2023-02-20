@@ -29,8 +29,9 @@ namespace Celeste.Mod.CelesteNet.Client {
 
                 if (!value && EnabledEntry != null && Engine.Scene != null)
                     Engine.Scene.OnEndOfFrame += () => EnabledEntry?.LeftPressed();
-                if (ServerEntry != null)
-                    ServerEntry.Disabled = value || !(Engine.Scene is Overworld);
+                // TODO:
+                // if (ServerEntry != null)
+                //     ServerEntry.Disabled = value || !(Engine.Scene is Overworld);
                 if (NameEntry != null)
                     NameEntry.Disabled = value || !(Engine.Scene is Overworld);
             }
@@ -44,11 +45,23 @@ namespace Celeste.Mod.CelesteNet.Client {
 #if !DEBUG
         [SettingIgnore]
 #endif
-        [SettingSubText("modoptions_celestenetclient_devonlyhint")]
-        public string Server { get; set; } = "celeste.0x0a.de";
         [YamlIgnore]
         [SettingIgnore]
-        public TextMenu.Button ServerEntry { get; protected set; }
+        public string Server { get; set; } = "";
+
+        [SettingSubText("modoptions_celestenetclient_devonlyhint")]
+        public string MasterServer { get; set; } = "http://localhost:1337";
+
+        [YamlIgnore]
+        [SettingIgnore]
+        public TextMenu.Item MasterServerEntry { get; protected set; }
+
+        [YamlIgnore]
+        public byte ServerBrowser { get; set; } = 0;
+
+        [YamlIgnore]
+        [SettingIgnore]
+        public TextMenu.Button ServerBrowserEntry { get; protected set; }
 
         public string Name { get; set; } = "Guest";
         [YamlIgnore]
@@ -219,8 +232,7 @@ namespace Celeste.Mod.CelesteNet.Client {
         private float CalcUIScale(int uisize) {
             if (UIScaleOverride > 0f)
                 return UIScaleOverride;
-            return uisize switch
-            {
+            return uisize switch {
                 1 => 0.25f,
                 2 => 0.4f,
                 3 => 0.6f,
@@ -270,21 +282,30 @@ namespace Celeste.Mod.CelesteNet.Client {
             );
         }
 
-        public void CreateServerEntry(TextMenu menu, bool inGame) {
+        public void CreateServerBrowserEntry(TextMenu menu, bool inGame) {
+            menu.Add(
+                (ServerBrowserEntry = new TextMenu.Button(("modoptions_celestenetclient_serverbrowser".DialogClean())))
+                .Pressed(() => {
+                    OuiGenericMenu.Goto<OuiServerBrowser>(overworld => overworld.Goto<OuiModOptions>());
+                })
+            );
+        }
+
+        public void CreateMasterServerEntry(TextMenu menu, bool inGame) {
 #if DEBUG
             menu.Add(
-                (ServerEntry = new TextMenu.Button(("modoptions_celestenetclient_server".DialogClean()).Replace("((server))", Server)))
+                (MasterServerEntry = new TextMenu.Button(("modoptions_celestenetclient_masterserver".DialogClean()).Replace("((server))", MasterServer)))
                 .Pressed(() => {
                     Audio.Play("event:/ui/main/savefile_rename_start");
                     menu.SceneAs<Overworld>().Goto<OuiModOptionString>().Init<OuiModOptions>(
-                        Server,
-                        v => Server = v,
-                        maxValueLength: 30
+                        MasterServer,
+                        v => MasterServer = v,
+                        maxValueLength: 64
                     );
                 })
             );
-            ServerEntry.Disabled = inGame || Connected;
-            ServerEntry.AddDescription(menu, "modoptions_celestenetclient_devonlyhint".DialogClean());
+            MasterServerEntry.Disabled = inGame || Connected;
+            MasterServerEntry.AddDescription(menu, "modoptions_celestenetclient_devonlyhint".DialogClean());
 #endif
         }
 
@@ -322,8 +343,7 @@ namespace Celeste.Mod.CelesteNet.Client {
             item.AddDescription(menu, "modoptions_celestenetclient_reloadhint".DialogClean());
         }
 
-        public void CreateUISizeChatEntry(TextMenu menu, bool inGame)
-        {
+        public void CreateUISizeChatEntry(TextMenu menu, bool inGame) {
             if (UISizeChat < UISizeMin || UISizeChat > UISizeMax)
                 UISizeChat = UISize;
             menu.Add(
@@ -332,8 +352,7 @@ namespace Celeste.Mod.CelesteNet.Client {
             );
         }
 
-        public void CreateUISizePlayerListEntry(TextMenu menu, bool inGame)
-        {
+        public void CreateUISizePlayerListEntry(TextMenu menu, bool inGame) {
             if (UISizePlayerList < UISizeMin || UISizePlayerList > UISizeMax)
                 UISizePlayerList = UISize;
             menu.Add(
@@ -346,10 +365,10 @@ namespace Celeste.Mod.CelesteNet.Client {
 
         [Flags]
         public enum SyncMode {
-            OFF =           0b00,
-            Send =          0b01,
-            Receive =       0b10,
-            ON =            0b11
+            OFF = 0b00,
+            Send = 0b01,
+            Receive = 0b10,
+            ON = 0b11
         }
 
     }

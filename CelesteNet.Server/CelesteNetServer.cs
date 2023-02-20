@@ -25,6 +25,8 @@ namespace Celeste.Mod.CelesteNet.Server {
 
         public readonly CelesteNetServerSettings Settings;
 
+        public readonly MasterServer MasterServer;
+
         public readonly DataContext Data;
         public readonly NetPlusThreadPool ThreadPool;
         public readonly PacketDumper PacketDumper;
@@ -49,7 +51,7 @@ namespace Celeste.Mod.CelesteNet.Server {
         public readonly HashSet<CelesteNetPlayerSession> Sessions = new();
         public readonly ConcurrentDictionary<CelesteNetConnection, CelesteNetPlayerSession> PlayersByCon = new();
         public readonly ConcurrentDictionary<uint, CelesteNetPlayerSession> PlayersByID = new();
-        private readonly System.Timers.Timer HeartbeatTimer, PingRequestTimer;
+        private readonly System.Timers.Timer HeartbeatTimer, PingRequestTimer, MasterHeartbeatTimer;
 
         public float CurrentTickRate { get; private set; }
         private float NextTickRate;
@@ -80,6 +82,8 @@ namespace Celeste.Mod.CelesteNet.Server {
             Timestamp = StartupTime.Ticks / TimeSpan.TicksPerMillisecond;
 
             Settings = settings;
+
+            MasterServer = new(Settings);
 
             DetourModManager = new();
 
@@ -142,6 +146,9 @@ namespace Celeste.Mod.CelesteNet.Server {
 
             PingRequestTimer = new(Settings.PingRequestInterval);
             PingRequestTimer.Elapsed += (_, _) => SendPingRequests();
+
+            MasterHeartbeatTimer = new(Settings.MasterServerHeartbeatInterval);
+            MasterHeartbeatTimer.Elapsed += (_, _) => PostMasterServer();
         }
 
         private void OnModuleFileUpdate(object sender, FileSystemEventArgs args) {
@@ -193,10 +200,13 @@ namespace Celeste.Mod.CelesteNet.Server {
 
             HeartbeatTimer.Start();
             PingRequestTimer.Start();
+            MasterHeartbeatTimer.Start();
             CurrentTickRate = NextTickRate = Settings.MaxTickRate;
             ThreadPool.Scheduler.OnPreScheduling += AdjustTickRate;
 
             Logger.Log(LogLevel.CRI, "main", "Ready");
+
+            PostMasterServer();
         }
 
         public void Wait() {
@@ -312,7 +322,7 @@ namespace Celeste.Mod.CelesteNet.Server {
         public CelesteNetPlayerSession CreateSession(CelesteNetConnection con, string playerUID, string playerName, CelesteNetClientOptions clientOptions) {
             CelesteNetPlayerSession ses;
             using (ConLock.W()) {
-                ses = new(this, con, unchecked ((uint) Interlocked.Increment(ref nextSesId)), playerUID, playerName, clientOptions);
+                ses = new(this, con, unchecked((uint) Interlocked.Increment(ref nextSesId)), playerUID, playerName, clientOptions);
                 Sessions.Add(ses);
                 PlayersByCon[con] = ses;
                 PlayersByID[ses.SessionID] = ses;
@@ -357,10 +367,11 @@ namespace Celeste.Mod.CelesteNet.Server {
                     try {
                         switch (con) {
                             case CelesteNetTCPUDPConnection tcpUdpCon: {
-                                string? disposeReason = tcpUdpCon.DoHeartbeatTick();
-                                if (disposeReason != null)
-                                    disposeCons.Add((tcpUdpCon, disposeReason));
-                            } break;
+                                    string? disposeReason = tcpUdpCon.DoHeartbeatTick();
+                                    if (disposeReason != null)
+                                        disposeCons.Add((tcpUdpCon, disposeReason));
+                                }
+                                break;
                         }
                     } catch (Exception e) {
                         disposeCons.Add((con, $"Error in heartbeat tick of connection {con}: {e}"));
@@ -404,15 +415,20 @@ namespace Celeste.Mod.CelesteNet.Server {
             });
         }
 
+        private void PostMasterServer() {
+            Logger.Log(LogLevel.INF, "master", "Posting to master server");
+            MasterServer.PostAsync().Wait();
+        }
+
         private void SendPingRequests() {
             using (ConLock.R()) {
                 // Send ping requests for supported connections
                 foreach (CelesteNetConnection con in Connections) {
                     switch (con) {
                         case ConPlusTCPUDPConnection tcpUdpCon: {
-                            tcpUdpCon.SendPingRequest();
-                            break;
-                        }
+                                tcpUdpCon.SendPingRequest();
+                                break;
+                            }
                     }
                 }
 
@@ -420,17 +436,17 @@ namespace Celeste.Mod.CelesteNet.Server {
                 foreach (CelesteNetPlayerSession ses in Sessions) {
                     switch (ses.Con) {
                         case ConPlusTCPUDPConnection tcpUdpCon: {
-                            DataInternalBlob conInfoPacket = DataInternalBlob.For(Data, new DataConnectionInfo() {
-                                Player = ses.PlayerInfo,
-                                TCPPingMs = tcpUdpCon.TCPPingMs,
-                                UDPPingMs = tcpUdpCon.UDPPingMs
-                            });
+                                DataInternalBlob conInfoPacket = DataInternalBlob.For(Data, new DataConnectionInfo() {
+                                    Player = ses.PlayerInfo,
+                                    TCPPingMs = tcpUdpCon.TCPPingMs,
+                                    UDPPingMs = tcpUdpCon.UDPPingMs
+                                });
 
-                            foreach (CelesteNetPlayerSession other in Sessions)
-                                other.Con.Send(conInfoPacket);
+                                foreach (CelesteNetPlayerSession other in Sessions)
+                                    other.Con.Send(conInfoPacket);
 
-                            break;
-                        }
+                                break;
+                            }
                     }
                 }
             }

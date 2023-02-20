@@ -29,6 +29,10 @@ namespace Celeste.Mod.CelesteNet.Server {
         public string ModuleConfigRoot { get; set; } = "ModuleConfigs";
         public string UserDataRoot { get; set; } = "UserData";
 
+        public string MasterServer { get; set; } = "http://localhost:1337";
+        public int MasterServerHeartbeatInterval { get; set; } = 60000;
+        public string ServerName { get; set; } = "Celeste Server";
+
         public int HeuristicSampleWindow { get; set; } = 800;
 
         public int NetPlusThreadPoolThreads { get; set; } = -1;
